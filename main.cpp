@@ -15,43 +15,6 @@ struct Point {
     }
 };
 
-// Fenwick Tree (Binary Indexed Tree) for counting
-class FenwickTree {
-private:
-    vector<int> tree;
-    int n;
-
-public:
-    FenwickTree(int size) {
-        n = size;
-        tree.assign(n + 1, 0);
-    }
-    
-    void update(int idx, int delta) {
-        while (idx <= n) {
-            tree[idx] += delta;
-            idx += idx & (-idx);
-        }
-    }
-    
-    int query(int idx) {
-        int sum = 0;
-        while (idx > 0) {
-            sum += tree[idx];
-            idx -= idx & (-idx);
-        }
-        return sum;
-    }
-    
-    int rangeQuery(int left, int right) {
-        return query(right) - query(left - 1);
-    }
-    
-    void clear() {
-        fill(tree.begin(), tree.end(), 0);
-    }
-};
-
 int main() {
     int n;
     cin >> n;
@@ -66,47 +29,45 @@ int main() {
     // Sort points by x-coordinate
     sort(points.begin(), points.end());
     
-    // Coordinate compression for y-coordinates
-    vector<int> y_coords;
-    for (const auto& p : points) {
-        y_coords.push_back(p.y);
-    }
-    sort(y_coords.begin(), y_coords.end());
-    y_coords.erase(unique(y_coords.begin(), y_coords.end()), y_coords.end());
-    
-    // Map y-coordinate to compressed index
-    auto get_y_index = [&](int y) -> int {
-        return lower_bound(y_coords.begin(), y_coords.end(), y) - y_coords.begin() + 1;
-    };
-    
     long long count = 0;
     
-    // For each point as a potential bottom-left corner
+    // For each point as the left boundary
     for (int i = 0; i < n; i++) {
-        // Create a Fenwick tree for the current sweep
-        FenwickTree fenw(y_coords.size());
-        
-        // Add the current point to the Fenwick tree
-        int y1_idx = get_y_index(points[i].y);
-        fenw.update(y1_idx, 1);
+        // Set to maintain y-coordinates of points seen so far
+        set<int> y_coords;
+        y_coords.insert(points[i].y);
         
         // Sweep through points to the right (higher x-coordinate)
         for (int j = i + 1; j < n; j++) {
-            int y2_idx = get_y_index(points[j].y);
-            
             // Check if points[i] can be bottom-left and points[j] can be top-right
-            // This requires points[i].y < points[j].y
             if (points[i].y < points[j].y) {
-                // Check if there are no points in the rectangle (except corners)
-                // We need to check if there are any points with y-coordinate between
-                // points[i].y and points[j].y that have been seen so far (x < points[j].x)
-                if (fenw.rangeQuery(y1_idx + 1, y2_idx - 1) == 0) {
+                // Find the smallest y-coordinate greater than points[i].y
+                auto it = y_coords.upper_bound(points[i].y);
+                // If there is no such point or the smallest one is >= points[j].y,
+                // then there are no points in the y-interval (points[i].y, points[j].y)
+                if (it == y_coords.end() || *it >= points[j].y) {
+                    count++;
+                }
+            }
+            // Check if points[j] can be bottom-left and points[i] can be top-right
+            else if (points[j].y < points[i].y) {
+                // Find the largest y-coordinate smaller than points[i].y
+                auto it = y_coords.lower_bound(points[i].y);
+                if (it != y_coords.begin()) {
+                    --it;
+                    // If the largest one is <= points[j].y,
+                    // then there are no points in the y-interval (points[j].y, points[i].y)
+                    if (*it <= points[j].y) {
+                        count++;
+                    }
+                } else {
+                    // No points smaller than points[i].y
                     count++;
                 }
             }
             
-            // Add current point to the Fenwick tree for future queries
-            fenw.update(y2_idx, 1);
+            // Add current point's y-coordinate to the set
+            y_coords.insert(points[j].y);
         }
     }
     
