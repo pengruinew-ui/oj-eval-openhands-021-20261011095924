@@ -46,6 +46,10 @@ public:
     int rangeQuery(int left, int right) {
         return query(right) - query(left - 1);
     }
+    
+    void clear() {
+        fill(tree.begin(), tree.end(), 0);
+    }
 };
 
 int main() {
@@ -77,35 +81,31 @@ int main() {
     
     long long count = 0;
     
-    // For each point as the left boundary
+    // For each point as a potential bottom-left corner
     for (int i = 0; i < n; i++) {
         // Create a Fenwick tree for the current sweep
         FenwickTree fenw(y_coords.size());
         
-        // Mark the current point's y-coordinate
+        // Add the current point to the Fenwick tree
         int y1_idx = get_y_index(points[i].y);
         fenw.update(y1_idx, 1);
         
-        // Sweep through points to the right
+        // Sweep through points to the right (higher x-coordinate)
         for (int j = i + 1; j < n; j++) {
             int y2_idx = get_y_index(points[j].y);
             
             // Check if points[i] can be bottom-left and points[j] can be top-right
+            // This requires points[i].y < points[j].y
             if (points[i].y < points[j].y) {
-                // Check if there are no points between them in y-range
+                // Check if there are no points in the rectangle (except corners)
+                // We need to check if there are any points with y-coordinate between
+                // points[i].y and points[j].y that have been seen so far (x < points[j].x)
                 if (fenw.rangeQuery(y1_idx + 1, y2_idx - 1) == 0) {
-                    count++;
-                }
-            } 
-            // Check if points[j] can be bottom-left and points[i] can be top-right
-            else if (points[j].y < points[i].y) {
-                // Check if there are no points between them in y-range
-                if (fenw.rangeQuery(y2_idx + 1, y1_idx - 1) == 0) {
                     count++;
                 }
             }
             
-            // Add current point to the Fenwick tree
+            // Add current point to the Fenwick tree for future queries
             fenw.update(y2_idx, 1);
         }
     }
